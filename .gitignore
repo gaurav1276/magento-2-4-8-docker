@@ -1,0 +1,19 @@
+# Magento
+/src/vendor
+/src/generated
+/src/app/etc/env.php
+/src/auth.json
+/src/var
+/src/pub/static
+/src/pub/media
+/src/node_modules
+
+# Docker data
+dbdata/
+osdata/
+
+# IDE / OS
+.DS_Store
+.idea
+.vscode
+*.log
