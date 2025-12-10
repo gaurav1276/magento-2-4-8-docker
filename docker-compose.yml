@@ -1,17 +1,17 @@
-version: "3.9"
+version: '5'
 
 services:
+
   php:
-    container_name: php-magento-248
+    container_name: magento248-php
     build:
       context: ./docker/php
     ports:
-      - 8000:9000
+      - 9000:9000
     volumes:
       - appdata:/var/www
-      - ./src:/var/www/magento-248-src
+      - ./magento2478:/var/www/magento248:cached
       - ./docker/php/www.conf:/usr/local/etc/php-fpm.d/www.conf
-      - ~/.ssh:/root/.ssh:ro
     environment:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
@@ -22,25 +22,24 @@ services:
       - magento_network
 
   nginx:
-    container_name: nginx-magento-248
-    build:
-      context: ./docker/nginx
+    container_name: magento248-nginx
+    image: nginx:1.24
     ports:
       - 80:80
     volumes:
-      - ./src:/var/www/magento-248-src       # exact 1:1 mapping with PHP container
+      - ./magento248:/var/www/magento248:cached
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./docker/nginx/m2-config/nginx.conf:/var/www/magento-248/nginx.conf
+      - ./docker/nginx/m2-config/nginx.conf:/var/www/nginx.conf
     depends_on:
       - php
     networks:
       - magento_network
 
   db:
-    container_name: mariadb-magento-248
+    container_name: magento248-mariadb
     image: mariadb:10.6
     ports:
-      - 3308:3306
+      - 3307:3306
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -50,23 +49,18 @@ services:
       - magento_network
 
   mailhog:
-    container_name: mail-magento-248
-    image: mailhog/mailhog:latest
-    platform: linux/amd64
+    image: axllent/mailpit
     ports:
-      - "1025:1025"
       - "8025:8025"
-    networks:
-      - magento_network
 
   redis:
-    container_name: redis-magento-248
-    image: redis:7
+    container_name: magento248-redis
+    image: redis:latest
     networks:
       - magento_network
 
   redisinsight:
-    container_name: redisinsight-magento-248
+    container_name: magento248-redisinsight
     image: redislabs/redisinsight:latest
     ports:
       - 8001:8001
@@ -74,7 +68,7 @@ services:
       - magento_network
 
   rabbitmq:
-    container_name: rabbitmq-magento-248
+    container_name: magento248-rabbitmq
     image: rabbitmq:3-management
     ports:
       - "15672:15672"
@@ -84,35 +78,44 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.12.0
-    container_name: opensearch-magento-248
+    container_name: magento248-opensearch
     ports:
       - "9200:9200"
       - "9300:9300"
     environment:
-      - discovery.type=single-node                # required for single node cluster
-      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"    # JVM memory
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - ./docker/opensearch/opensearch.yml:/usr/share/opensearch/config/opensearch.yml
+      "discovery.type": "single-node"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      DISABLE_SECURITY_PLUGIN: true
     networks:
       - magento_network
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.12.0
-    container_name: opensearch-dashboards-magento-248
+    container_name: magento248-opensearch-dashboards
     ports:
       - 5601:5601
+    expose:
+      - '5601'
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch-magento-248:9200"]'
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
       DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
     networks:
       - magento_network
+
+  #blackfire:
+  #    container_name: blackfire
+  #    image: blackfire/blackfire
+  #    ports: ["8707"]
+  #    environment:
+  #        # Exposes BLACKFIRE_* environment variables from the host
+  #        BLACKFIRE_SERVER_ID: ### Add server id ####
+  #        BLACKFIRE_SERVER_TOKEN: ### Add server token ###
+  #        BLACKFIRE_CLIENT_ID: ### Add client id ###
+  #        BLACKFIRE_CLIENT_TOKEN: ### Add client Token ###
 
 volumes:
   appdata:
 
 networks:
   magento_network:
+    driver: bridge
